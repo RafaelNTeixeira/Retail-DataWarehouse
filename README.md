@@ -95,7 +95,6 @@ Conformed dimensions: **Date**, **Customer**, **Product**, **Location** — thes
   * `customer_lifetime_spent` (monetary) — cumulative spend by customer up to month-end (**semi‑additive**; cannot be summed across months).
   * `month_total_spent` (monetary) — amount spent during the month (additive across customers and months)
   * `month_total_orders` (integer) — number of orders in the month
-  * `avg_order_value` (monetary) — month_total_spent / month_total_orders
 
 ---
 
