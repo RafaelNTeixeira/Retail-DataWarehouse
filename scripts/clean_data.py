@@ -2,7 +2,6 @@ import pandas as pd
 import sys
 from pathlib import Path
 
-# Loads the raw data from a CSV file
 def load_data(file_path):
     """Loads the raw CSV data."""
     print(f"Loading data from {file_path}...")
@@ -17,10 +16,9 @@ def load_data(file_path):
         print(f"Error loading data: {e}", file=sys.stderr)
         sys.exit(1)
 
-# Cleans the data according to the specified rules
 def clean_data(df):
     """
-    Cleans the raw retail data based on the README:
+    Cleans the raw retail data based on the following steps:
     1. Renames columns to match the data warehouse model.
     2. Drops rows with missing critical data.
     3. Fills missing categorical data with 'Unknown'.
@@ -130,7 +128,6 @@ def clean_data(df):
     print(f"Data cleaning finished. Final shape: {df.shape}")
     return df
 
-# Saves the cleaned DataFrame to a new CSV file
 def save_data(df, output_path):
     """Saves the cleaned DataFrame to a new CSV file."""
     print(f"Saving cleaned data to {output_path}...")
@@ -141,7 +138,6 @@ def save_data(df, output_path):
         print(f"Error saving data: {e}", file=sys.stderr)
         sys.exit(1)
 
-# Main function to orchestrate the cleaning process
 def main():
     input_file = Path("./data/raw/new_retail_data.csv")
     output_file = Path("./data/clean/cleaned_retail_data.csv")
