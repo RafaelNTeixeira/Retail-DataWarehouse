@@ -1,1 +1,5 @@
 /venv
+/data/clean/cleaned_retail_data.csv
+
+__pycache__/
+*.pyc
