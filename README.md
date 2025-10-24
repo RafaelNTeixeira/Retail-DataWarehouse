@@ -35,13 +35,13 @@ Conformed dimensions: **Date**, **Customer**, **Product**, **Location** - these 
 ### DimDate
 
 * **Grain:** 1 row per calendar day
-* **Key:** `date_key` (YYYYMMDD integer)
+* **Key:** `date_key` (DDMMYYYY integer)
 * **Attributes:** `date` (date), `day_of_week`, `day_name`, `month`, `month_name`, `quarter`, `year`, `is_weekend`, `is_holiday_flag` (nullable)
 
 ### DimTimeOfDay (New)
 
 * **Grain:** 1 row per second
-* **Key:** `time_key` (HHMMSS integer)
+* **Key:** `time_key` (SSMMHH integer)
 * **Attributes:** `time_of_day` (time), `hour_24`, `minute`, `second`, `time_bucket_12hr` (e.g., '8:00 AM - 8:59 AM'), `time_bucket_period` (e.g., 'Morning', 'Afternoon', 'Evening', 'Night')
 
 ### DimCustomer
@@ -149,8 +149,8 @@ Fact_Customer_MonthlySnapshot -> DimDate (month), DimCustomer, DimLocation
     * **CRITICAL:** The source `Transaction_ID` must be cleansed to remove duplicates and collisions. This model relies on a clean `Transaction_ID` to correctly group product lines into unique orders.
     * Null checks on critical fields (`Customer_ID`, `Date`, `Time`, `Total_Amount`).
 3.  **Cleansing & standardization:**
-    * Normalize `Date` to ISO format; compute `date_key` (YYYYMMDD) and `month_key` (YYYYMM).
-    * Parse `Time` to ISO format; compute `time_key` (HHMMSS).
+    * Normalize `Date` to ISO format; compute `date_key` (DDMMYYYY) and `month_key` (MMYYYY).
+    * Parse `Time` to ISO format; compute `time_key` (SSMMHH).
     * Use the `products` column as the `product_name` to map to `DimProduct`.
     * Standardize payment/shipping/country names.
 4.  **Dimension loading:**
