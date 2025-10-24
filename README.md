@@ -158,7 +158,7 @@ Fact_Customer_MonthlySnapshot -> DimDate (month), DimCustomer, DimLocation
 
 1.  **Ingest raw files** into a staging area.
 2.  **Data quality checks:**
-    * **CRITICAL:** The source `Transaction_ID` must be cleansed to remove duplicates and collisions. This model relies on a clean `Transaction_ID` to correctly group product lines into unique orders.
+    * **CRITICAL:** The source `Transaction_ID` must be cleansed to remove collisions, as multiple `Transaction_ID` rows are available in the dataset that target different customers. For safety reasons, rows with the same `Transaction_ID` are removed.
     * Null checks on critical fields (`Customer_ID`, `Date`, `Time`, `Total_Amount`).
 3.  **Cleansing & standardization:**
     * Normalize `Date` to ISO format; compute `date_key` (DDMMYYYY) and `month_key` (MMYYYY).

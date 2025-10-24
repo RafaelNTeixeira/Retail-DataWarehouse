@@ -23,12 +23,13 @@ def clean_data(df):
     2. Drops rows with missing critical data.
     3. Fills missing categorical data with 'Unknown'.
     4. Converts data types (especially Date and Time).
-    5. Generates 'date_key' (DDMMYYYY), 'time_key' (SSMMHH), and 'month_key' (MMYYYY).
-    6. Reorders columns for a clean output file.
+    5. Finds all "collided" transaction_id's and removes them completely.
+    6. Generates 'date_key' (DDMMYYYY), 'time_key' (SSMMHH), and 'month_key' (MMYYYY).
+    7. Reorders columns for a clean output file.
     """
     print("Cleaning data...")
     
-    # 1. Rename columns based on our data model
+    # 1. Rename columns
     df.rename(columns={
         'Transaction_ID': 'transaction_id',
         'Total_Purchases': 'quantity',
@@ -54,40 +55,54 @@ def clean_data(df):
         if col in df.columns:
             df[col] = df[col].fillna('Unknown')
 
-    # 4. Convert data types
+    # 4. Convert data types (early, for cleansing step)
     try:
-        # Create datetime objects to work with
-        # Source format is M/D/YYYY. Convert to DD/MM/YYYY
         df['Date_dt'] = pd.to_datetime(df['Date'], format='%m/%d/%Y')
-        # Source format is HH:MM:SS. Convert to SS::MM::HH
         df['Time_dt'] = pd.to_timedelta(df['Time'].astype(str))
     except Exception as e:
         print(f"Error during Date/Time conversion: {e}. Dropping bad rows.", file=sys.stderr)
-        # On failure, drop rows that couldn't be parsed
         df.dropna(subset=['Date', 'Time'], inplace=True)
-        # Re-attempt conversion
+        # We need to make a copy here to avoid the same warning
+        df = df.copy()
         df['Date_dt'] = pd.to_datetime(df['Date'])
         df['Time_dt'] = pd.to_timedelta(df['Time'].astype(str))
-
-    # 5. Generate Date and Time keys
-    print("Generating date_key (DDMMYYYY), time_key (SSMMHH), and month_key (MMYYYY)...")
-
-    # Create date_key (DDMMYYYY)
-    df['date_key'] = df['Date_dt'].dt.strftime('%d%m%Y')
     
-    # Create month_key (MMYYYY)
+    df['Customer_ID'] = df['Customer_ID'].astype(int)
+    df['transaction_id'] = df['transaction_id'].astype(int)
+
+    # 5. Remove all rows for any collided Transaction_ID
+    print(f"Original row count: {len(df)}")
+    print("Finding and removing collided transaction_ids...")
+
+    # Flag transactions that have inconsistent customer or date values
+    collision_mask = (
+        df.groupby('transaction_id')['Customer_ID'].transform('nunique') > 1
+    ) | (
+        df.groupby('transaction_id')['Date_dt'].transform('nunique') > 1
+    )
+
+    n_collided = collision_mask.sum()
+
+    if n_collided:
+        print(f"Found {n_collided} collided rows (across {df.loc[collision_mask, 'transaction_id'].nunique()} transaction_ids). Removing them...")
+        df = df.loc[~collision_mask].copy() # Keep all rows where collision_mask is False
+    else:
+        print("No collided transaction_ids found.")
+
+    print(f"New row count after cleansing: {len(df)}")
+
+    # 6. Generate Date and Time keys
+    print("Generating date_key (DDMMYYYY), time_key (SSMMHH), and month_key (MMYYYY)...")
+    
+    df['date_key'] = df['Date_dt'].dt.strftime('%d%m%Y')
     df['month_key'] = df['Date_dt'].dt.strftime('%m%Y')
     
-    # Create time_key (SSMMHH)
-    # Extract components from timedelta, cast to string, and pad with 0
     df['hour_str'] = (df['Time_dt'].dt.components.hours).astype(str).str.zfill(2)
     df['minute_str'] = (df['Time_dt'].dt.components.minutes).astype(str).str.zfill(2)
     df['second_str'] = (df['Time_dt'].dt.components.seconds).astype(str).str.zfill(2)
     
-    # Concatenate in SSMMHH format
     df['time_key'] = df['second_str'] + df['minute_str'] + df['hour_str']
     
-    # Drop temporary helper columns
     df.drop(columns=['Date_dt', 'Time_dt', 'hour_str', 'minute_str', 'second_str'], inplace=True)
 
     # Convert numeric types
@@ -96,36 +111,17 @@ def clean_data(df):
     df['transaction_id'] = df['transaction_id'].astype('Int64')
     df['Zipcode'] = df['Zipcode'].fillna(-1).astype(int) # Use -1 for missing zips
 
-    # 6. Select and reorder columns for the clean file
+    # 7. Select and reorder columns
     final_columns = [
-        'transaction_id',           # The degenerate dimension
-        'date_key',                 # For DimDate
-        'time_key',                 # For DimTimeOfDay
-        'month_key',                # For Fact_Customer_MonthlySnapshot
-        'Customer_ID',              # For DimCustomer
-        # Fact Measures
-        'quantity',
-        'unit_price',
-        'line_total_amount',
-        'Ratings',
-        # DimProduct attributes
-        'product_name',
-        'Product_Category',
-        'Product_Brand',
-        'Product_Type',
-        # Other Dim attributes
-        'Payment_Method',
-        'Shipping_Method',
-        'Order_Status',
-        'Feedback',
-        # DimCustomer/DimLocation attributes
+        'transaction_id', 'date_key', 'time_key', 'month_key', 'Customer_ID',
+        'quantity', 'unit_price', 'line_total_amount', 'Ratings',
+        'product_name', 'Product_Category', 'Product_Brand', 'Product_Type',
+        'Payment_Method', 'Shipping_Method', 'Order_Status', 'Feedback',
         'Name', 'Email', 'Phone', 'Address', 'City', 'State', 
         'Zipcode', 'Country', 'Age', 'Gender', 'Income', 'Customer_Segment',
-        # Original date/time for reference
         'Date', 'Time'
     ]
     
-    # Filter for columns that actually exist in the dataframe
     existing_final_columns = [col for col in final_columns if col in df.columns]
     df = df[existing_final_columns]
     
@@ -137,7 +133,6 @@ def save_data(df, output_path):
     print(f"Saving cleaned data to {output_path}...")
     try:
         output_path.parent.mkdir(parents=True, exist_ok=True)
-        # Save without the pandas index and with standard comma delimiter
         df.to_csv(output_path, index=False, sep=',')
     except Exception as e:
         print(f"Error saving data: {e}", file=sys.stderr)
