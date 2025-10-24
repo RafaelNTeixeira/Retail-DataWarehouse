@@ -1,5 +1,17 @@
 # Retail-DataWarehouse
 
+# How to run
+
+1. Ensure you have the required packages by running the following command in the terminal:
+```bash
+pip install -r requirements.txt
+``` 
+
+2. Run the following command in the terminal to clean and process the raw dataset data: 
+```bash
+python3 scripts/clean_data.py
+```
+
 # 1. Subject description
 
 **Title:** Retail Sales Data Warehouse (e‑commerce cross‑country dataset)
