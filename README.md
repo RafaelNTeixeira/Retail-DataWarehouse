@@ -2,14 +2,16 @@
 
 # How to run
 
-1. Ensure you have the required packages by running the following command in the terminal:
-```bash
-pip install -r requirements.txt
-``` 
+1. Ensure you have Make installed. It will facilitate and simplify the flow of the execution process.
 
-2. Run the following command in the terminal to clean and process the raw dataset data: 
+2. Run the following command to generate the containers for both Apache Superset and MySQL:
 ```bash
-python3 scripts/clean_data.py
+make setup
+```
+
+3. Run the following command to process the data. This will also install required python dependencies:
+```bash
+make manage-data
 ```
 
 # 1. Subject description
