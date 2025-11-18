@@ -1,48 +1,73 @@
-version: '3.8'
+version: "3.8"
 
 services:
   superset:
-    # ERROR FIX: Use 'build' instead of 'image' so it uses your Dockerfile
     build: .
     container_name: superset_app
     ports:
       - "8088:8088"
     environment:
-      - SUPERSET_SECRET_KEY=your_strong_random_secret_key_here
-      - SUPERSET_LOAD_EXAMPLES=yes
-      # Metadata DB (Internal Superset storage) - Keep this as Postgres for stability
-      - DATABASE_DB=superset
-      - DATABASE_HOST=db
-      - DATABASE_PASSWORD=superset
-      - DATABASE_USER=superset
-      - DATABASE_PORT=5432
-      - DATABASE_DIALECT=postgresql
-      - POSTGRES_DB=superset
-      - POSTGRES_USER=superset
-      - POSTGRES_PASSWORD=superset
+      SUPERSET_SECRET_KEY: your_strong_random_secret_key_here
+
+      # ---- MySQL Metadata Storage ----
+      DATABASE_DIALECT: mysql
+      DATABASE_HOST: mysql
+      DATABASE_PORT: 3306
+      DATABASE_DB: superset
+      DATABASE_USER: superset
+      DATABASE_PASSWORD: superset
+
+      # ---- Redis for Caching + Celery ----
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      CACHE_CONFIG: |
+        {
+          "CACHE_TYPE": "RedisCache",
+          "CACHE_DEFAULT_TIMEOUT": 300,
+          "CACHE_KEY_PREFIX": "superset_",
+          "CACHE_REDIS_HOST": "redis",
+          "CACHE_REDIS_PORT": 6379,
+          "CACHE_REDIS_DB": 1
+        }
+
+      # Optional: load dashboards
+      SUPERSET_LOAD_EXAMPLES: "yes"
+
     depends_on:
-      - db
+      - mysql
       - redis
+
     volumes:
       - superset_home:/app/superset_home
 
-  # ... (Keep 'db' and 'redis' services from the previous instruction unchanged)
-  db:
-    image: postgres:15
-    container_name: superset_db
+
+  mysql:
+    image: mysql:8
+    container_name: superset_mysql
     restart: always
     environment:
-      POSTGRES_USER: superset
-      POSTGRES_PASSWORD: superset
-      POSTGRES_DB: superset
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: superset
+      MYSQL_USER: superset
+      MYSQL_PASSWORD: superset
+    command: --default-authentication-plugin=mysql_native_password
+    ports:
+      - "3306:3306"
     volumes:
-      - db_data:/var/lib/postgresql/data
+      - mysql_data:/var/lib/mysql
+
 
   redis:
     image: redis:7
-    container_name: superset_cache
+    container_name: superset_redis
     restart: always
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
 
 volumes:
   superset_home:
-  db_data:
+  mysql_data:
+  redis_data:
