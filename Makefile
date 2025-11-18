@@ -14,15 +14,19 @@ setup:
 	$(MAKE) init
 
 clean-data:
+	@echo "Cleaning up raw data..."
 	python3 scripts/clean_data.py
 
 build:
+	@echo "Building Superset service..."
 	@$(COMPOSE) build --no-cache $(SERVICE_SUPERSET)
 
 up:
+	@echo "Starting Superset service..."
 	@$(COMPOSE) up -d
 
 down:
+	@echo "Stopping Superset service..."
 	@$(COMPOSE) down -v
 
 restart:
