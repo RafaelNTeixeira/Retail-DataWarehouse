@@ -13,7 +13,7 @@ services:
       # Metadata DB (Internal Superset storage) - Keep this as Postgres for stability
       - DATABASE_DB=superset
       - DATABASE_HOST=db
-      - DATABASE_PASSWORD=superset
+      - DATABASE_PASSORD=superset
       - DATABASE_USER=superset
       - DATABASE_PORT=5432
       - DATABASE_DIALECT=postgresql
