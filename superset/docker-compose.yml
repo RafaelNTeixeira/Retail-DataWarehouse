@@ -1,0 +1,48 @@
+version: '3.8'
+
+services:
+  superset:
+    # ERROR FIX: Use 'build' instead of 'image' so it uses your Dockerfile
+    build: .
+    container_name: superset_app
+    ports:
+      - "8088:8088"
+    environment:
+      - SUPERSET_SECRET_KEY=your_strong_random_secret_key_here
+      - SUPERSET_LOAD_EXAMPLES=yes
+      # Metadata DB (Internal Superset storage) - Keep this as Postgres for stability
+      - DATABASE_DB=superset
+      - DATABASE_HOST=db
+      - DATABASE_PASSWORD=superset
+      - DATABASE_USER=superset
+      - DATABASE_PORT=5432
+      - DATABASE_DIALECT=postgresql
+      - POSTGRES_DB=superset
+      - POSTGRES_USER=superset
+      - POSTGRES_PASSWORD=superset
+    depends_on:
+      - db
+      - redis
+    volumes:
+      - superset_home:/app/superset_home
+
+  # ... (Keep 'db' and 'redis' services from the previous instruction unchanged)
+  db:
+    image: postgres:15
+    container_name: superset_db
+    restart: always
+    environment:
+      POSTGRES_USER: superset
+      POSTGRES_PASSWORD: superset
+      POSTGRES_DB: superset
+    volumes:
+      - db_data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7
+    container_name: superset_cache
+    restart: always
+
+volumes:
+  superset_home:
+  db_data:
