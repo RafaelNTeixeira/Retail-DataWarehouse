@@ -1,4 +1,4 @@
-COMPOSE := docker compose -f superset/docker-compose.yml
+COMPOSE := docker compose -f superset/docker-compose-win.yml
 SERVICE_SUPERSET := superset
 SERVICE_MYSQL := mysql
 
