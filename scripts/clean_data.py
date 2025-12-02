@@ -3,7 +3,8 @@ import sys
 from pathlib import Path
 import os
 from dotenv import load_dotenv
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
+from sqlalchemy.types import Integer, BigInteger, Date, Time, String, Float
 
 env_path = Path(__file__).parent / ".env"
 load_dotenv(dotenv_path=env_path)
@@ -102,16 +103,17 @@ def clean_data(df):
     
     df['date_key'] = df['Date_dt'].dt.strftime('%d%m%Y')
     df['month_key'] = df['Date_dt'].dt.strftime('%m%Y')
+
+    df['Date'] = df['Date_dt'].dt.strftime('%Y-%m-%d')
     
     df['hour_str'] = (df['Time_dt'].dt.components.hours).astype(str).str.zfill(2)
     df['minute_str'] = (df['Time_dt'].dt.components.minutes).astype(str).str.zfill(2)
     df['second_str'] = (df['Time_dt'].dt.components.seconds).astype(str).str.zfill(2)
-    
     df['time_key'] = df['second_str'] + df['minute_str'] + df['hour_str']
     
     df.drop(columns=['Date_dt', 'Time_dt', 'hour_str', 'minute_str', 'second_str'], inplace=True)
 
-    # Convert numeric types
+    # Convert numeric types 
     df['quantity'] = df['quantity'].astype('Int64')
     df['Customer_ID'] = df['Customer_ID'].astype('Int64')
     df['transaction_id'] = df['transaction_id'].astype('Int64')
@@ -148,7 +150,7 @@ def submit_data_to_mysql(df, table_name="retail_sales"):
     """Submits cleaned data to Azure MySQL with SSL."""
     print(f"Submitting data to Azure MySQL table '{table_name}'...")
     
-    db_user = os.environ.get("MYSQL_USER", "admin") 
+    db_user = os.environ.get("MYSQL_USER", "user") 
     db_password = os.environ.get("MYSQL_PASSWORD", "password")
     db_host = os.environ.get("MYSQL_HOST", "localhost")
     db_port = os.environ.get("MYSQL_PORT", "3306")
@@ -164,6 +166,19 @@ def submit_data_to_mysql(df, table_name="retail_sales"):
     # Create connection string
     connection_str = f"mysql+pymysql://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}"
 
+    sql_types = {
+        "transaction_id": BigInteger(),
+        "Customer_ID": BigInteger(),
+        "date_key": Integer(),
+        "time_key": Integer(),
+        "month_key": Integer(),
+        "Date": Date(),
+        "Time": Time(),
+        "quantity": Integer(),
+        "unit_price": Float(),
+        "line_total_amount": Float()
+    }
+
     try:
         # Create engine with SSL arguments
         engine = create_engine(
@@ -177,8 +192,15 @@ def submit_data_to_mysql(df, table_name="retail_sales"):
         )
         
         # Upload data
-        # method='multi' speeds up inserts significantly for pandas + mysql
-        df.to_sql(table_name, con=engine, if_exists='replace', index=False, method='multi', chunksize=1000)
+        df.to_sql(
+            table_name, 
+            con=engine, 
+            if_exists='replace', 
+            index=False, 
+            method='multi', 
+            chunksize=1000, 
+            dtype=sql_types
+        )
         
         print(f"✓ Successfully submitted {len(df)} rows to Azure MySQL table '{table_name}'")
 
