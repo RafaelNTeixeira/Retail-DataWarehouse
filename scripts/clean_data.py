@@ -2,7 +2,11 @@ import pandas as pd
 import sys
 from pathlib import Path
 import os
+from dotenv import load_dotenv
 from sqlalchemy import create_engine
+
+env_path = Path(__file__).parent / ".env"
+load_dotenv(dotenv_path=env_path)
 
 def load_data(file_path):
     """Loads the raw CSV data."""
@@ -149,9 +153,6 @@ def submit_data_to_mysql(df, table_name="retail_sales"):
     db_host = os.environ.get("MYSQL_HOST", "localhost")
     db_port = os.environ.get("MYSQL_PORT", "3306")
     db_name = os.environ.get("MYSQL_DATABASE", "db_name")
-
-    print("host:", db_host)
-    print("database:", db_name)
     
     # Path to the SSL Certificate you downloaded
     ssl_ca_path = os.environ.get("MYSQL_SSL_CA", "./DigiCertGlobalRootG2.crt.pem")
