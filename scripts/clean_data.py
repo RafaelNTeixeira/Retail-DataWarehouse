@@ -1,6 +1,8 @@
 import pandas as pd
 import sys
 from pathlib import Path
+import os
+from sqlalchemy import create_engine
 
 def load_data(file_path):
     """Loads the raw CSV data."""
@@ -138,6 +140,31 @@ def save_data(df, output_path):
         print(f"Error saving data: {e}", file=sys.stderr)
         sys.exit(1)
 
+def submit_data_to_mysql(df, table_name="retail_sales"):
+    """Submits cleaned data to MySQL."""
+    print(f"Submitting data to MySQL table '{table_name}'...")
+    
+    # Get connection details from environment or use defaults
+    db_user = os.environ.get("MYSQL_USER", "superset")
+    db_password = os.environ.get("MYSQL_PASSWORD", "superset")
+    db_host = os.environ.get("MYSQL_HOST", "localhost")
+    db_port = os.environ.get("MYSQL_PORT", "3306")
+    db_name = os.environ.get("MYSQL_DATABASE", "superset")
+    
+    # Create engine
+    engine = create_engine(
+        f"mysql+pymysql://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}"
+    )
+    
+    try:
+        df.to_sql(table_name, con=engine, if_exists='replace', index=False)
+        print(f"✓ Successfully submitted {len(df)} rows to MySQL table '{table_name}'")
+    except Exception as e:
+        print(f"✗ Error submitting to MySQL: {e}", file=sys.stderr)
+        sys.exit(1)
+    finally:
+        engine.dispose()
+
 def main():
     input_file = Path("./data/raw/new_retail_data.csv")
     output_file = Path("./data/clean/cleaned_retail_data.csv")
@@ -147,6 +174,8 @@ def main():
     df_cleaned = clean_data(df)
     save_data(df_cleaned, output_file)
     print("--- Data Cleaning Complete ---")
+    submit_data_to_mysql(df_cleaned, table_name="retail_sales")
+    print("--- Data Submission Complete ---")
 
 if __name__ == "__main__":
     main()

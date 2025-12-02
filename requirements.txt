@@ -1,6 +1,10 @@
+greenlet==3.1.1
 numpy==1.24.4
 pandas==2.0.3
+pymysql==1.1.2
 python-dateutil==2.9.0.post0
 pytz==2025.2
 six==1.17.0
+sqlalchemy==2.0.44
+typing-extensions==4.13.2
 tzdata==2025.2
