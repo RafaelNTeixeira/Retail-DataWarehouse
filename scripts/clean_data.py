@@ -141,29 +141,53 @@ def save_data(df, output_path):
         sys.exit(1)
 
 def submit_data_to_mysql(df, table_name="retail_sales"):
-    """Submits cleaned data to MySQL."""
-    print(f"Submitting data to MySQL table '{table_name}'...")
+    """Submits cleaned data to Azure MySQL with SSL."""
+    print(f"Submitting data to Azure MySQL table '{table_name}'...")
     
-    # Get connection details from environment or use defaults
-    db_user = os.environ.get("MYSQL_USER", "superset")
-    db_password = os.environ.get("MYSQL_PASSWORD", "superset")
+    db_user = os.environ.get("MYSQL_USER", "admin") 
+    db_password = os.environ.get("MYSQL_PASSWORD", "password")
     db_host = os.environ.get("MYSQL_HOST", "localhost")
     db_port = os.environ.get("MYSQL_PORT", "3306")
-    db_name = os.environ.get("MYSQL_DATABASE", "superset")
+    db_name = os.environ.get("MYSQL_DATABASE", "db_name")
+
+    print("host:", db_host)
+    print("database:", db_name)
     
-    # Create engine
-    engine = create_engine(
-        f"mysql+pymysql://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}"
-    )
-    
+    # Path to the SSL Certificate you downloaded
+    ssl_ca_path = os.environ.get("MYSQL_SSL_CA", "./DigiCertGlobalRootG2.crt.pem")
+
+    # Check if certificate exists (Critical for Azure)
+    if not os.path.exists(ssl_ca_path):
+        print(f"⚠️ Warning: SSL Certificate not found at {ssl_ca_path}. Connection might fail.")
+
+    # Create connection string
+    connection_str = f"mysql+pymysql://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}"
+
     try:
-        df.to_sql(table_name, con=engine, if_exists='replace', index=False)
-        print(f"✓ Successfully submitted {len(df)} rows to MySQL table '{table_name}'")
+        # Create engine with SSL arguments
+        engine = create_engine(
+            connection_str,
+            connect_args={
+                "ssl": {
+                    "ca": ssl_ca_path,
+                    "check_hostname": True
+                }
+            }
+        )
+        
+        # Upload data
+        # method='multi' speeds up inserts significantly for pandas + mysql
+        df.to_sql(table_name, con=engine, if_exists='replace', index=False, method='multi', chunksize=1000)
+        
+        print(f"✓ Successfully submitted {len(df)} rows to Azure MySQL table '{table_name}'")
+
     except Exception as e:
         print(f"✗ Error submitting to MySQL: {e}", file=sys.stderr)
         sys.exit(1)
     finally:
-        engine.dispose()
+        # Dispose engine if it was created
+        if 'engine' in locals():
+            engine.dispose()
 
 def main():
     input_file = Path("./data/raw/new_retail_data.csv")
