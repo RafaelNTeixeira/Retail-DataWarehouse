@@ -1,12 +1,12 @@
-.PHONY: build up down restart ps logs logs-superset init clean-data setup
+.PHONY: setup requirements clean-data
 
 setup:
-	$(MAKE) manage-data
+	$(MAKE) requirements
+	$(MAKE) clean-data
 
-manage-data:
+requirements:
 	@echo "Installing Python dependencies for data processing..."
 	pip install -r requirements.txt
-	$(MAKE) clean-data
 
 clean-data:
 	@echo "Cleaning up raw data..."

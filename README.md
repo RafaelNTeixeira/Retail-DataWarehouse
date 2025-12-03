@@ -2,17 +2,55 @@
 
 # How to run
 
-1. Ensure you have Make installed. It will facilitate and simplify the flow of the execution process.
+## 0. Quick View 
 
-2. Run the following command to generate the containers for both Apache Superset and MySQL:
+If you only want to view the final dashboard, simply open the **.pbix** file in Power BI Desktop.
+
+If you want to set up the full project environment and data pipeline, please follow the steps below.
+
+## 1. Environment Configuration
+
+Ensure you have Make installed to streamline the execution process.
+
+Create a file named `.env` at the root of the project and paste the following content:
+
+```bash
+MYSQL_USER = "aid" 
+MYSQL_PASSWORD = "Bolodearroz123!"
+MYSQL_HOST = "aid.mysql.database.azure.com"
+MYSQL_PORT = "3306"
+MYSQL_DATABASE = "aidtrabalho"
+MYSQL_SSL_CA = "./DigiCertGlobalRootG2.crt.pem"
+```
+
+## 2. Installation
+
+Run the following command to install project requirements and submit data to the Azure cloud server:
 ```bash
 make setup
 ```
 
-3. Run the following command to process the data. This will also install required python dependencies:
-```bash
-make manage-data
-```
+## 3. Connect via MySQL Workbench
+
+To inspect the database directly, establish a new connection in MySQL Workbench using these settings:
+- **Connection Name:** Can be anything (we used `Azure Database`)
+- **Hostname:** `aid.mysql.database.azure.com`
+- **Port:** `3306`
+- **Username:** `aid`
+- **Password:** Click `Store in Vault` and enter: `Bolodearroz123!`
+- **SSL:** Navigate to the **SSL** tab. In the **CA File** field, select the `DigiCertGlobalRootG2.crt.pem` file located in this repository.
+
+## 4. Connect via Power BI
+
+To connect the data to Power BI manually:
+
+1. Open Power BI Desktop and create a blank report.
+2. Select **Get Data** > **Database** > **MySQL Database**.
+3. Enter the following credentials:
+   - **Server:** `aid.mysql.database.azure.com`
+   - **Database:** `aidtrabalho`
+4. If prompted for authentication, select **Database** (left sidebar) and use the username and password provided in Step 3.
+
 
 # 1. Subject description
 
