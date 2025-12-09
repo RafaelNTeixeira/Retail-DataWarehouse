@@ -38,58 +38,68 @@ LEFT JOIN DimShipping s ON r.Shipping_Method = s.shipping_method;
 
 
 CREATE TABLE Fact_Customer_MonthlySnapshot (
-    -- Primary Key (Composite)
-    snapshot_key INT AUTO_INCREMENT PRIMARY KEY,
-    
-    -- Foreign Keys
-    month_key INT,       -- Format: YYYYMM
-    customer_key INT,
-    location_key INT,    -- We will take their most recent location for that month
-    
-    -- Measures
-    customer_lifetime_spent DECIMAL(15, 2), -- Cumulative (Running Total)
-    month_total_spent DECIMAL(15, 2),       -- Additive
-    month_total_orders INT,                 -- Additive
-    
-    -- Indexes for Performance
-    INDEX idx_cust_month (customer_key, month_key)
+    snapshot_id INT AUTO_INCREMENT PRIMARY KEY,
+    -- Points to Jan 31st, Feb 28th, etc.
+    snapshot_date_key INT NOT NULL, 
+    customer_key INT NOT NULL,
+    location_key INT NOT NULL,  -- The location where they ended the month
+    -- METRICS
+    month_spend DECIMAL(15, 2) DEFAULT 0,
+    month_orders INT DEFAULT 0,
+    lifetime_spend DECIMAL(15, 2) DEFAULT 0,
+    -- CONSTRAINTS
+    -- This ensures Data Integrity. We cannot have a snapshot for a date that doesn't exist.
+    FOREIGN KEY (snapshot_date_key) REFERENCES DimDate(date_key),
+    FOREIGN KEY (customer_key) REFERENCES DimCustomer(customer_key),
+    -- PERFORMANCE INDEX
+    UNIQUE INDEX idx_cust_date (customer_key, snapshot_date_key)
 );
 INSERT INTO Fact_Customer_MonthlySnapshot (
-    month_key, 
+    snapshot_date_key, 
     customer_key, 
     location_key, 
-    month_total_spent, 
-    month_total_orders, 
-    customer_lifetime_spent
+    month_spend, 
+    month_orders, 
+    lifetime_spend
 )
-WITH MonthlyAggregates AS (
-    -- Step 1: Aggregate individual sales into Monthly Buckets
+WITH MonthlyActivity AS (
     SELECT 
-        -- Create a Month Key (YYYYMM) from DimDate
-        (d.year * 100) + d.month AS month_key,
+        -- Calculate DDMMYYYY format (Day * 1000000 + Month * 10000 + Year)
+        (DAY(LAST_DAY(CONCAT(d.year, '-', d.month, '-01'))) * 1000000) 
+        + (d.month * 10000) 
+        + d.year AS snapshot_date_key,
+        
         f.customer_key,
-        -- Logic: Take the location of their most recent purchase in that month
-        MAX(f.location_key) AS location_key,
-        -- Monthly Totals
-        SUM(f.line_total_amount) AS month_spend,
-        COUNT(f.transaction_id) AS month_orders
+        f.location_key,
+        f.line_total_amount,
+        f.transaction_id,
+        
+        ROW_NUMBER() OVER(
+            PARTITION BY f.customer_key, d.year, d.month 
+            ORDER BY d.year DESC, d.month DESC, f.time_key DESC
+        ) as txn_rank_desc
         
     FROM FactSales f
     JOIN DimDate d ON f.date_key = d.date_key
-    GROUP BY 
-        (d.year * 100) + d.month, 
-        f.customer_key
+),
+MonthlyAggregates AS (
+    SELECT 
+        snapshot_date_key,
+        customer_key,
+        MAX(CASE WHEN txn_rank_desc = 1 THEN location_key END) as location_key,
+        SUM(line_total_amount) as month_spend,
+        COUNT(transaction_id) as month_orders
+    FROM MonthlyActivity
+    GROUP BY snapshot_date_key, customer_key
 )
--- Step 2: Calculate the Cumulative Lifetime Spend
 SELECT 
-    month_key,
+    snapshot_date_key,
     customer_key,
     location_key,
     month_spend,
     month_orders,
-    -- Window Function to calculate Running Total per Customer
     SUM(month_spend) OVER (
         PARTITION BY customer_key 
-        ORDER BY month_key
-    ) AS lifetime_spend
+        ORDER BY snapshot_date_key
+    ) as lifetime_spend
 FROM MonthlyAggregates;
