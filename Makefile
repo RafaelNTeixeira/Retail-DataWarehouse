@@ -6,7 +6,7 @@ setup:
 
 requirements:
 	@echo "Installing Python dependencies for data processing..."
-	pip install -r requirements.txt
+	pip3 install -r requirements.txt
 
 clean-data:
 	@echo "Cleaning up raw data..."
