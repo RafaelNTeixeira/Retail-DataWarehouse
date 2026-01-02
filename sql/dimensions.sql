@@ -161,7 +161,7 @@ FROM retail_sales;
 
 
 --------------------------------------
------------- DimShipping -------------
+------------ DimCustomer -------------
 --------------------------------------
 -- Create Table
 CREATE TABLE DimCustomer (
